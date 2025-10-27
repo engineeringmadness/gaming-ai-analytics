@@ -10,7 +10,7 @@
 -- MAGIC **Fixed** would be those that are not changing once game is created
 -- MAGIC - Genre - Fixed - Do require translation for readability -> Use AI
 -- MAGIC - Publisher - Fixed
--- MAGIC - Platform - Maybe in future a new port of game is released so not fixed
+-- MAGIC - Platform - Maybe in future a new port of game is released so not fixed but once changed we only need to pick latest value
 -- MAGIC - Developer - Fixed
 -- MAGIC - Category - Fixed - Translate and attach as tags into the table with list agg
 -- MAGIC
@@ -23,6 +23,18 @@ JOIN steam.raw.inbound_categories cats ON mapp.category_id = cats.id ORDER BY ap
 -- COMMAND ----------
 
 SELECT DISTINCT name FROM steam.raw.inbound_genres
+
+-- COMMAND ----------
+
+SELECT
+  id,
+  name,
+  ai_query(
+    'databricks-llama-4-maverick',
+    CONCAT('Translate the provided text English and ONLY output the translated output: ', name)
+  ) AS readable_name
+FROM steam.raw.inbound_genres
+LIMIT 10;
 
 -- COMMAND ----------
 
