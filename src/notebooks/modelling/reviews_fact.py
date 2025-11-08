@@ -38,9 +38,9 @@ def generate_sentiment_score(df: DataFrame) -> DataFrame:
                     - Somewhat Negative Review gets -2
                     - Very Bad Review gets -5
                     - Unable to understand review gets 0
+                    - Review = NA then score will be 0
                     - If you feed parts of the review fit different scoring categories select the most positive one
-                IMPORTANT: Output ONLY one single final score value. No introductions, explanations, or additional commentary. 
-                Please no explanations needed only one single number
+                IMPORTANT: Output ONLY one single final score value. No introductions, explanations, or additional commentary.Please no explanations needed only one single number
                 Review: ', review_text))"""
         ),
     )
@@ -67,7 +67,7 @@ reviews_df =  (
 # Remove reviews from alpha phase
 without_spam = reviews_df.filter(
     (F.col("author_playtime_at_review") > 0) & (F.col("author_playtime_forever") > 1)
-).filter(F.col("written_during_early_access") == False)
+).filter(F.col("written_during_early_access") == False).fill_na({"review_text": "NA"})
 
 # COMMAND ----------
 
