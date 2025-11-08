@@ -1,0 +1,47 @@
+{
+  "name": "gaming-ai-analytics",
+  "email_notifications": {
+    "no_alert_for_skipped_runs": false
+  },
+  "webhook_notifications": {},
+  "timeout_seconds": 0,
+  "max_concurrent_runs": 1,
+  "tasks": [
+    {
+      "task_key": "dimensions",
+      "run_if": "ALL_SUCCESS",
+      "notebook_task": {
+        "notebook_path": "/Workspace/Users/karangupta184@live.com/gaming-data-analytics/src/notebooks/modelling/auxillary_dims",
+        "base_parameters": {
+          "catalog": "steam",
+          "environment": "analytics",
+          "raw_location": "/Volumes/steam/raw/landing_zone"
+        },
+        "source": "WORKSPACE"
+      },
+      "timeout_seconds": 0,
+      "email_notifications": {},
+      "webhook_notifications": {}
+    },
+    {
+      "task_key": "reviews_fact",
+      "run_if": "ALL_SUCCESS",
+      "notebook_task": {
+        "notebook_path": "/Workspace/Users/karangupta184@live.com/gaming-data-analytics/src/notebooks/modelling/reviews_fact",
+        "base_parameters": {
+          "catalog": "steam",
+          "environment": "analytics",
+          "raw_location": "/Volumes/steam/raw/landing_zone"
+        },
+        "source": "WORKSPACE"
+      },
+      "timeout_seconds": 0,
+      "email_notifications": {},
+      "webhook_notifications": {}
+    }
+  ],
+  "queue": {
+    "enabled": true
+  },
+  "performance_target": "PERFORMANCE_OPTIMIZED"
+}
