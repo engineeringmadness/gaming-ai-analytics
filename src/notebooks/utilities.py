@@ -11,6 +11,8 @@ class GameConstants:
   GAME_TYPES = ['game', 'demo', 'dlc']
   GAME_ID = 'appid'
   REVIEW_ID = 'recommendationid'
+  GENERATED_SCORE = 'sentiment_score'
+  WEIGHTED_SCORE = 'weighted_score'
 
 # COMMAND ----------
 
