@@ -13,6 +13,7 @@ class GameConstants:
   REVIEW_ID = 'recommendationid'
   GENERATED_SCORE = 'sentiment_score'
   WEIGHTED_SCORE = 'weighted_score'
+  DIM_ID = "id"
 
 # COMMAND ----------
 
