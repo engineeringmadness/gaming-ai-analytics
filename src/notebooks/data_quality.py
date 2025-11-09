@@ -72,6 +72,7 @@ for dim, dim_id in zip(dimensions, ids):
 
   checks_applied = dq_engine.apply_checks(linkage_table, integrity_check, ref_dfs=ref_dfs)
   errors = checks_applied.filter(F.col("_errors").isNotNull())
+  
   if errors.count() > 0:
     display(errors)
     raise Exception("Data quality checks failed")
