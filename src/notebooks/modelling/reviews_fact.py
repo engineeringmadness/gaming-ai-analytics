@@ -27,22 +27,23 @@ from pyspark.sql import functions as F
 def generate_sentiment_score(df: DataFrame) -> DataFrame:
     return df.withColumn(
         "sentiment_score",
-        F.expr(
-            """ai_query('databricks-llama-4-maverick',
-                CONCAT(
-                'Role: You are a data labeller for a game review company
-                Task: Based on review determine a numerical score with following guidelines
-                    - Very Positive Review gets +5
-                    - Somewhat Positive Review gets + 2
-                    - Each Neutral Review gets + 1
-                    - Somewhat Negative Review gets -2
-                    - Very Bad Review gets -5
-                    - Unable to understand review gets 0
-                    - Review = NA then score will be 0
-                    - If you feed parts of the review fit different scoring categories select the most positive one
-                IMPORTANT: Output ONLY one single final score value. No introductions, explanations, or additional commentary.Please no explanations needed only one single number
-                Review: ', review_text))"""
-        ),
+        F.when(((F.col("review_text").isNull()) | (F.col("review_text") == "")), 0).otherwise(
+            F.expr(
+                """ai_query('databricks-llama-4-maverick',
+                    CONCAT(
+                    'Role: You are a data labeller for a game review company
+                    Task: Based on review determine a numerical score with following guidelines
+                        - Very Positive Review gets +5
+                        - Somewhat Positive Review gets + 2
+                        - Each Neutral Review gets + 1
+                        - Somewhat Negative Review gets -2
+                        - Very Bad Review gets -5
+                        - Unable to understand review gets 0
+                        - If you feed parts of the review fit different scoring categories select the most positive one
+                    IMPORTANT: Output ONLY one single final score value. No introductions, explanations, or additional commentary.Please no explanations needed only one single number
+                    Review: ', review_text))"""
+            ),
+        )
     )
 
 # COMMAND ----------
@@ -67,20 +68,11 @@ reviews_df =  (
 # Remove reviews from alpha phase
 without_spam = reviews_df.filter(
     (F.col("author_playtime_at_review") > 0) & (F.col("author_playtime_forever") > 1)
-).filter(F.col("written_during_early_access") == False).fill_na({"review_text": "NA"})
+).filter(F.col("written_during_early_access") == False)
 
 # COMMAND ----------
 
-with_scores = generate_sentiment_score(without_spam).withColumn(
-    "weighted_score",
-    F.when(F.col("received_for_free"), F.col("sentiment_score") * 0.5).otherwise(
-        F.col("sentiment_score") * 1
-    ),
-)
-
-# COMMAND ----------
-
-final_df = with_scores.select(
+final_df = without_spam.select(
                         F.col(GameConstants.GAME_ID),
                         F.col(GameConstants.REVIEW_ID),
                         F.col("language"),
@@ -89,8 +81,52 @@ final_df = with_scores.select(
                         F.col("comment_count"),
                         F.col("author_playtime_forever"),
                         F.col("author_playtime_at_review"),
-                        F.col("weighted_score"))
+                        F.col("review_text"))
 
 # COMMAND ----------
 
-save_data(layer='fact', table_name='reviews', df=final_df)
+# Each review ID is unique and review text is not changing so once its processed by scoring system it need not to be reprocessed
+if table_exists('fact_reviews'):
+    existing_data = load_data(layer="fact", table_name="reviews")
+    final_df = final_df.join(existing_data, on=GameConstants.REVIEW_ID, how="leftanti")
+
+# COMMAND ----------
+
+with_scores = generate_sentiment_score(final_df)
+
+# COMMAND ----------
+
+fixed_score = with_scores.withColumn(
+    "fixed_score",
+    F.when(
+        F.col("sentiment_score").cast("int").isNotNull(), F.col("sentiment_score")
+    ).otherwise(F.lit(0)),
+)
+
+# COMMAND ----------
+
+weighted_scores = fixed_score.withColumn(
+    "weighted_score",
+    F.when(F.col("sponsored_review"), F.col("fixed_score") * 0.5).otherwise(
+        F.col("fixed_score")
+    ),
+)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC AI Scoring is a slow process and limited by quota of serverless compute allowed in Databricks Free Edition.
+# MAGIC Hence we use batches of size 10k to generate fact_reviews
+
+# COMMAND ----------
+
+total_size = final_df.count()
+batch_size = int(dbutils.widgets.get("batch_size"))
+batch_num = 0
+num_of_batches = round(total_size / batch_size)
+print(f"Batches left: {num_of_batches}")
+
+# COMMAND ----------
+
+df = weighted_scores.limit(batch_size)
+save_data(layer='fact', table_name='reviews', df=df, mode='append')

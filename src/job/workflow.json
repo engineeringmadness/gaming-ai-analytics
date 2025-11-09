@@ -31,17 +31,53 @@
         "base_parameters": {
           "catalog": "steam",
           "environment": "analytics",
-          "raw_location": "/Volumes/steam/raw/landing_zone"
+          "raw_location": "/Volumes/steam/raw/landing_zone",
+          "batch_size": "100"
         },
         "source": "WORKSPACE"
       },
       "timeout_seconds": 0,
       "email_notifications": {},
       "webhook_notifications": {}
+    },
+    {
+      "task_key": "quality_checks",
+      "depends_on": [
+        {
+          "task_key": "dimensions"
+        },
+        {
+          "task_key": "reviews_fact"
+        }
+      ],
+      "run_if": "ALL_SUCCESS",
+      "notebook_task": {
+        "notebook_path": "/Workspace/Users/karangupta184@live.com/gaming-data-analytics/src/notebooks/data_quality",
+        "base_parameters": {
+          "catalog": "steam",
+          "environment": "analytics"
+        },
+        "source": "WORKSPACE"
+      },
+      "timeout_seconds": 0,
+      "email_notifications": {},
+      "webhook_notifications": {},
+      "environment_key": "quality_checks_environment"
     }
   ],
   "queue": {
     "enabled": true
   },
+  "environments": [
+    {
+      "environment_key": "quality_checks_environment",
+      "spec": {
+        "dependencies": [
+          "databricks-labs-dqx==0.10.0"
+        ],
+        "environment_version": "4"
+      }
+    }
+  ],
   "performance_target": "PERFORMANCE_OPTIMIZED"
 }
