@@ -63,6 +63,26 @@
       "email_notifications": {},
       "webhook_notifications": {},
       "environment_key": "quality_checks_environment"
+    },
+    {
+      "task_key": "semantic_layer",
+      "depends_on": [
+        {
+          "task_key": "quality_checks"
+        }
+      ],
+      "run_if": "ALL_SUCCESS",
+      "notebook_task": {
+        "notebook_path": "/Workspace/Users/karangupta184@live.com/gaming-data-analytics/src/notebooks/modelling/semantic_layer",
+        "base_parameters": {
+          "catalog": "steam",
+          "environment": "analytics"
+        },
+        "source": "WORKSPACE"
+      },
+      "timeout_seconds": 0,
+      "email_notifications": {},
+      "webhook_notifications": {}
     }
   ],
   "queue": {
