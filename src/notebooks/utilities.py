@@ -37,7 +37,3 @@ def table_exists(table_name: str) -> bool:
     tables_df = spark.sql(f"SHOW TABLES IN {catalog}.{schema}")
     tables = [row.tableName for row in tables_df.collect()]
     return table_name in tables
-
-# COMMAND ----------
-
-

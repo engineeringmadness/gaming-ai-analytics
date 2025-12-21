@@ -38,7 +38,7 @@ def generate_sentiment_score(df: DataFrame) -> DataFrame:
                         - Each Neutral Review gets + 1
                         - Somewhat Negative Review gets -2
                         - Very Bad Review gets -5
-                        - Unable to understand review gets 0
+                        - Unable to understand review or empty review provided gets 0
                         - If you feed parts of the review fit different scoring categories select the most positive one
                     IMPORTANT: Output ONLY one single final score value. No introductions, explanations, or additional commentary.Please no explanations needed only one single number
                     Review: ', review_text))"""
@@ -87,7 +87,7 @@ final_df = without_spam.select(
 
 # Each review ID is unique and review text is not changing so once its processed by scoring system it need not to be reprocessed
 if table_exists('fact_reviews'):
-    existing_data = load_data(layer="fact", table_name="reviews")
+    existing_data = load_data(layer="fact", table_name="reviews").select(GameConstants.REVIEW_ID)
     final_df = final_df.join(existing_data, on=GameConstants.REVIEW_ID, how="leftanti")
 
 # COMMAND ----------
@@ -99,7 +99,8 @@ with_scores = generate_sentiment_score(final_df)
 fixed_score = with_scores.withColumn(
     "fixed_score",
     F.when(
-        F.col("sentiment_score").cast("int").isNotNull(), F.col("sentiment_score")
+        F.expr("try_cast(sentiment_score as int)").isNotNull(),
+        F.col("sentiment_score").cast("int")
     ).otherwise(F.lit(0)),
 )
 

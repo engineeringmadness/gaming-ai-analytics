@@ -16,6 +16,18 @@ AS $$
     - name: dim_games
       source: ${catalog}.${environment}.dim_games
       on: source.appid = dim_games.appid
+    - name: dim_categories
+      source: ${catalog}.${environment}.dim_categories
+      on: source.appid = dim_categories.appid
+    - name: dim_genres
+      source: ${catalog}.${environment}.dim_genres
+      on: source.appid = dim_genres.appid
+    - name: dim_publishers
+      source: ${catalog}.${environment}.dim_publishers
+      on: source.appid = dim_publishers.appid
+    - name: dim_developers
+      source: ${catalog}.${environment}.dim_developers
+      on: source.appid = dim_developers.appid
   dimensions:
     - name: release_date
       expr: dim_games.release_date
@@ -45,7 +57,22 @@ AS $$
       expr: dim_games.metacritic_score
       display_name: 'Metacritic Score'
       comment: 'Average rating of game on website Metacritic'
-
+    - name: developer
+      expr: dim_developers.name
+      display_name: 'Name of Developer'
+      comment: 'Name of the company / person who has developed the game'
+    - name: publisher
+      expr: dim_publishers.name
+      display_name: 'Name of Publisher'
+      comment: 'Name of the company / person who has published the game'
+    - name: genre
+      expr: dim_genres.name
+      display_name: 'Genres of game'
+      comment: 'Game Genres'
+    - name: category
+      expr: dim_categories.name
+      display_name: 'Categories of game'
+      comment: 'Game Categories'
   measures:
     - name: review_count
       expr: COUNT(*)

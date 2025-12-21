@@ -29,6 +29,8 @@ def generate_translations_for_name(df: DataFrame) -> DataFrame:
 # COMMAND ----------
 
 raw_zone = dbutils.widgets.get("raw_location")
+catalog = dbutils.widgets.get("catalog")
+schema = dbutils.widgets.get("environment")
 csv_files = dbutils.fs.ls(raw_zone)
 display(csv_files)
 
@@ -58,13 +60,41 @@ for file in csv_files:
     # Fixed dimensions don't need to be repopulated
     if not table_exists(table_name):
         if file.name in linkage_tables:
-            save_data(layer="linkage", table_name=table_name.replace('application_', ''), df=df)
+            df.createOrReplaceTempView(f"linkage_{table_name.replace('application_', '')}")
         elif file.name in dims_to_translate:
             print('Fixing dimension values')
             df = generate_translations_for_name(df)
-            save_data(layer="dim", table_name=table_name, df=df)
+            df.createOrReplaceTempView(f"stage_{table_name}")
         elif file.name in standard_dims:
-            save_data(layer="dim", table_name=table_name, df=df)
+            df.createOrReplaceTempView(f"stage_{table_name}")
+
+# COMMAND ----------
+
+flatten_dimensions = {
+    "linkage_categories": {
+        "reference_table": "stage_categories",
+        "key": "category_id"
+    },
+    "linkage_genres": {
+        "reference_table": "stage_genres",
+        "key": "genre_id"
+    },
+    "linkage_developers": {
+        "reference_table": "stage_developers",
+        "key": "developer_id"
+    },
+    "linkage_publishers": {
+        "reference_table": "stage_publishers",
+        "key": "publisher_id"
+    },
+}
+
+for key, value in flatten_dimensions.items():
+    print(f"Flattening {key} ===================")
+    link = spark.sql(f"SELECT * FROM {key}")
+    ref = spark.sql(f"SELECT * FROM {value['reference_table']}")
+    joined_df = link.join(ref, (link[value['key']] == ref[GameConstants.DIM_ID]), how='left')
+    save_data(layer="dim", table_name=key.replace('linkage_', ''), df=joined_df)
 
 # COMMAND ----------
 
@@ -102,6 +132,7 @@ remove_invalid_records = (
 
 # COMMAND ----------
 
+#Fix column names
 final_df = remove_invalid_records.select(
                         F.col(GameConstants.GAME_ID),
                         F.col("name"),
