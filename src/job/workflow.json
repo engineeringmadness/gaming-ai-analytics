@@ -5,6 +5,11 @@
   },
   "webhook_notifications": {},
   "timeout_seconds": 0,
+  "schedule": {
+    "quartz_cron_expression": "55 0 20 * * ?",
+    "timezone_id": "Asia/Kolkata",
+    "pause_status": "UNPAUSED"
+  },
   "max_concurrent_runs": 1,
   "tasks": [
     {
@@ -32,7 +37,7 @@
           "catalog": "steam",
           "environment": "analytics",
           "raw_location": "/Volumes/steam/raw/landing_zone",
-          "batch_size": "100"
+          "batch_size": "100000"
         },
         "source": "WORKSPACE"
       },
