@@ -99,7 +99,8 @@ with_scores = generate_sentiment_score(final_df)
 fixed_score = with_scores.withColumn(
     "fixed_score",
     F.when(
-        F.expr("try_cast(sentiment_score as int)").isNotNull(), F.col("sentiment_score")
+        F.expr("try_cast(sentiment_score as int)").isNotNull(),
+        F.col("sentiment_score").cast("int")
     ).otherwise(F.lit(0)),
 )
 
