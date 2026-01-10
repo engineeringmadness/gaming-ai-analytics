@@ -44,35 +44,3 @@ errors = checks_applied.filter(F.col("_errors").isNotNull())
 if errors.count() > 0:
     display(errors)
     raise Exception("Data quality checks failed")
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC Foreign Key checks between Linkage and Dimension tables - The dimension IDs in linkage tables should reference primary key of corresponding dimension tables
-
-# COMMAND ----------
-
-dimensions = ['categories', 'genres', 'developers', 'publishers']
-ids = ['category_id', 'genre_id', 'developer_id', 'publisher_id']
-
-for dim, dim_id in zip(dimensions, ids):
-  dim_table = load_data(layer="dim", table_name=dim)
-  linkage_table = load_data(layer="linkage", table_name=dim)
-
-  integrity_check = [
-      DQDatasetRule(
-      criticality="error",
-      check_func=check_funcs.foreign_key,
-      columns=[dim_id],
-      check_func_kwargs={"ref_df_name": "linkage", "ref_columns": [GameConstants.DIM_ID]}
-    ),
-  ]
-
-  ref_dfs = {"linkage": dim_table}
-
-  checks_applied = dq_engine.apply_checks(linkage_table, integrity_check, ref_dfs=ref_dfs)
-  errors = checks_applied.filter(F.col("_errors").isNotNull())
-  
-  if errors.count() > 0:
-    display(errors)
-    raise Exception("Data quality checks failed")

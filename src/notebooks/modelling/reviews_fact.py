@@ -2,8 +2,10 @@
 from pyspark.sql import DataFrame
 import requests
 from pyspark.sql.functions import udf
-from pyspark.sql.types import StringType
+from pyspark.sql.types import StringType, IntegerType
 from pyspark.sql import functions as F
+import json
+import re
 
 # COMMAND ----------
 
@@ -24,25 +26,85 @@ from pyspark.sql import functions as F
 
 # COMMAND ----------
 
+# Get OpenAI API configuration from job parameters
+openai_api_key = access_token = dbutils.notebook.entry_point.getDbutils().notebook().getContext().apiToken().getOrElse(None)
+openai_api_url = dbutils.widgets.get("ai_endpoint")
+
+# COMMAND ----------
+
+def call_openai_sentiment_api(review_text):
+    """Call OpenAI API to get sentiment score using structured JSON output"""
+    if not review_text or review_text.strip() == "":
+        return 0
+
+    # Escape special characters in the review text
+    escaped_text = review_text.replace('"', '\\"').replace("\n", " ").replace("\r", " ")
+
+    prompt = f"""Analyze this game review and return a JSON object with the sentiment score.
+Scoring rules:
+- Very Positive: 5
+- Somewhat Positive: 2
+- Neutral: 1
+- Somewhat Negative: -2
+- Very Negative: -5
+- Unable to understand: 0
+
+Review: {escaped_text}
+
+Return ONLY a JSON object in this exact format: {{"score": <integer>}}"""
+
+    headers = {
+        "Authorization": f"Bearer {openai_api_key}",
+        "Content-Type": "application/json"
+    }
+
+    data = {
+        "model": "gpt-3.5-turbo",
+        "messages": [
+            {"role": "system", "content": "You are a sentiment analysis system. You must return only a JSON object with a single integer score based on the review provided."},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.0,
+        "max_tokens": 20,  # Increased to accommodate JSON structure
+        "response_format": { "type": "json_object" }  # Force JSON output
+    }
+
+    try:
+        response = requests.post(openai_api_url, headers=headers, json=data, timeout=30)
+        response.raise_for_status()
+
+        result = response.json()
+        content = result['choices'][0]['message']['content'].strip()
+
+        # Parse JSON response and extract score
+        json_response = json.loads(content)
+        if 'score' in json_response and isinstance(json_response['score'], int):
+            return json_response['score']
+        else:
+            # Fallback: try to extract any integer from the response
+            match = re.search(r'(-?\d+)', content)
+            if match:
+                return int(match.group(1))
+            else:
+                return 0
+
+    except json.JSONDecodeError as e:
+        print(f"Error parsing JSON response: {e}")
+        return 0
+    except Exception as e:
+        print(f"Error calling OpenAI API: {e}")
+        return 0
+
+# Register the UDF
+sentiment_score_udf = udf(call_openai_sentiment_api, IntegerType())
+
+# COMMAND ----------
+
 def generate_sentiment_score(df: DataFrame) -> DataFrame:
     return df.withColumn(
         "sentiment_score",
         F.when(((F.col("review_text").isNull()) | (F.col("review_text") == "")), 0).otherwise(
-            F.expr(
-                """ai_query('databricks-llama-4-maverick',
-                    CONCAT(
-                    'Role: You are a data labeller for a game review company
-                    Task: Based on review determine a numerical score with following guidelines
-                        - Very Positive Review gets +5
-                        - Somewhat Positive Review gets + 2
-                        - Each Neutral Review gets + 1
-                        - Somewhat Negative Review gets -2
-                        - Very Bad Review gets -5
-                        - Unable to understand review or empty review provided gets 0
-                        - If you feed parts of the review fit different scoring categories select the most positive one
-                    IMPORTANT: Output ONLY one single final score value. No introductions, explanations, or additional commentary.Please no explanations needed only one single number
-                    Review: ', review_text))"""
-            ),
+            sentiment_score_udf(F.col("review_text"))
         )
     )
 
@@ -96,20 +158,11 @@ with_scores = generate_sentiment_score(final_df)
 
 # COMMAND ----------
 
-fixed_score = with_scores.withColumn(
-    "fixed_score",
-    F.when(
-        F.expr("try_cast(sentiment_score as int)").isNotNull(),
-        F.col("sentiment_score").cast("int")
-    ).otherwise(F.lit(0)),
-)
-
-# COMMAND ----------
-
-weighted_scores = fixed_score.withColumn(
+# Since sentiment_score is already an integer from the UDF, we can directly use it
+weighted_scores = with_scores.withColumn(
     "weighted_score",
-    F.when(F.col("sponsored_review"), F.col("fixed_score") * 0.5).otherwise(
-        F.col("fixed_score")
+    F.when(F.col("sponsored_review"), F.col("sentiment_score") * 0.5).otherwise(
+        F.col("sentiment_score")
     ),
 )
 
