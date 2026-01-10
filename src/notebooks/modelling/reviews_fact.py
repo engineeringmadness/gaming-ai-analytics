@@ -31,17 +31,17 @@ def generate_sentiment_score(df: DataFrame) -> DataFrame:
             F.expr(
                 """ai_query('databricks-llama-4-maverick',
                     CONCAT(
-                    'Role: You are a data labeller for a game review company
-                    Task: Based on review determine a numerical score with following guidelines
-                        - Very Positive Review gets +5
-                        - Somewhat Positive Review gets + 2
-                        - Each Neutral Review gets + 1
-                        - Somewhat Negative Review gets -2
-                        - Very Bad Review gets -5
-                        - Unable to understand review or empty review provided gets 0
-                        - If you feed parts of the review fit different scoring categories select the most positive one
-                    IMPORTANT: Output ONLY one single final score value. No introductions, explanations, or additional commentary.Please no explanations needed only one single number
-                    Review: ', review_text))"""
+                    'Analyze this game review and return only a single integer score. Do not write anything else.\n',
+                    'Scoring rules:\n',
+                    '- Very Positive: 5\n',
+                    '- Somewhat Positive: 2\n',
+                    '- Neutral: 1\n',
+                    '- Somewhat Negative: -2\n',
+                    '- Very Negative: -5\n',
+                    '- Unable to understand: 0\n',
+                    'If review has mixed sentiments, use the most positive one.\n',
+                    'Review: ', review_text, '\n',
+                    'Score:'))"""
             ),
         )
     )
