@@ -28,7 +28,7 @@ import re
 
 # Get OpenAI API configuration from job parameters
 openai_api_key = access_token = dbutils.notebook.entry_point.getDbutils().notebook().getContext().apiToken().getOrElse(None)
-openai_api_url = dbutils.widgets.get("AI_ENDPOINT")
+openai_api_url = dbutils.widgets.get("ai_endpoint")
 
 # COMMAND ----------
 
