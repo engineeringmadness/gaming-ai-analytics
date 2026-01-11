@@ -37,7 +37,8 @@
           "catalog": "steam",
           "environment": "analytics",
           "raw_location": "/Volumes/steam/raw/landing_zone",
-          "batch_size": "100000"
+          "batch_size": "50000",
+          "ai_endpoint": "https://dbc-eaacd3e9-d6a7.cloud.databricks.com/serving-endpoints/databricks-llama-4-maverick/invocations"
         },
         "source": "WORKSPACE"
       },
